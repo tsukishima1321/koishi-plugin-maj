@@ -1,11 +1,56 @@
-import { Context, Schema } from 'koishi'
+import { Context, Schema, Session } from 'koishi'
+import { tileToUnicode, Wind } from './utils/utils'
+import { MajGame4p } from './majGame4p'
 
 export const name = 'mahjong'
 
-export interface Config {}
+export const inject = {
+  required: [],
+  optional: [],
+}
 
-export const Config: Schema<Config> = Schema.object({})
+export interface Config { }
+
+export const Config = Schema.object({})
+
+const waitUserReply = async (ctx: Context, guildID: string, userID: string): Promise<string> => {
+  let finished = false
+  let result = ''
+  let listener = (session: Session) => {
+    if (session.content.startsWith('maj ') && session.userId == userID && session.guildId == guildID) {
+      finished = true
+      result = session.content.slice(4)
+    }
+  }
+  const dispose = ctx.on('message', listener)
+  let count = 0
+  while (!finished) {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    count++
+    if (count > 120) {
+      finished = true
+      result = 'timeout'
+    }
+  }
+  dispose()
+  return result
+}
 
 export function apply(ctx: Context) {
-  // write your plugin here
+  let activeGames: { [key: string]: MajGame4p } = {}
+  ctx.command('startGame').action(async ({ session }) => {
+    if (activeGames[session.userId]) {
+      session.send('You are already in a game')
+      return
+    }
+    const sendMessage = (mes: string) => {
+      session.send(mes);
+    }
+    const waitResponse = () => {
+      return waitUserReply(ctx, session.guildId, session.userId)
+    }
+    const game = new MajGame4p('aaa', Wind.East, 0, sendMessage, waitResponse)
+    activeGames[session.userId] = game
+    game.startGame()
+  })
 }
