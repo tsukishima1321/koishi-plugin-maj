@@ -34,6 +34,14 @@ export class Wind {
             case _Wind.North: return '北'
         }
     }
+    public next(): Wind {
+        switch (this._Wind) {
+            case _Wind.East: return Wind.South
+            case _Wind.South: return Wind.West
+            case _Wind.West: return Wind.North
+            case _Wind.North: return Wind.East
+        }
+    }
     public static East = new Wind(_Wind.East)
     public static South = new Wind(_Wind.South)
     public static West = new Wind(_Wind.West)

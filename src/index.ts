@@ -1,6 +1,7 @@
 import { Context, Schema, Session } from 'koishi'
-import { tileToUnicode, Wind } from './utils/utils'
+import { Wind } from './utils/utils'
 import { MajGame4p } from './majGame4p'
+import { buildHora,Hora } from 'mahjong-utils'
 
 export const name = 'mahjong'
 
@@ -29,7 +30,7 @@ const waitUserReply = async (ctx: Context, guildID: string, userID: string): Pro
     count++
     if (count > 120) {
       finished = true
-      result = 'timeout'
+      throw new Error('Timeout')
     }
   }
   dispose()
@@ -37,6 +38,14 @@ const waitUserReply = async (ctx: Context, guildID: string, userID: string): Pro
 }
 
 export function apply(ctx: Context) {
+  let horaParas = {
+    agari: '1p',
+    tsumo: false,
+    dora: 1,
+    tiles: '1112345678999p',
+  }
+  let res = buildHora(horaParas)
+  console.log(res)
   let activeGames: { [key: string]: MajGame4p } = {}
   ctx.command('startGame').action(async ({ session }) => {
     if (activeGames[session.userId]) {
@@ -51,6 +60,8 @@ export function apply(ctx: Context) {
     }
     const game = new MajGame4p('aaa', Wind.East, 0, sendMessage, waitResponse)
     activeGames[session.userId] = game
-    game.startGame()
+    await game.startGame()
+    activeGames[session.userId] = undefined
+    return "Game finished"
   })
 }
