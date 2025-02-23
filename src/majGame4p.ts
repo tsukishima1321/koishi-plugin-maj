@@ -101,6 +101,9 @@ export class MajGame4p {
             player.hand = []
             player.river = []
             player.furos = []
+            player.riichi = false
+            player.riichiIppatsu = false
+            player.menzen = true
             for (let i = 0; i < 13; i++) {
                 player.hand.push(this.cardBank.pop()!)
             }
@@ -108,6 +111,11 @@ export class MajGame4p {
         }
     }
     private moveWind() {
+        this.gameProcess.turn++
+        if (this.gameProcess.turn == 5) {
+            this.gameProcess.turn = 1
+            this.gameProcess.wind = this.gameProcess.wind.next()
+        }
         for (const player of this.players) {
             player.seat = player.seat.next()
             this.playerSeat = this.playerSeat.next()
@@ -147,20 +155,20 @@ export class MajGame4p {
         }
         return res;
     }
-    private calculatePoints(horaResult: Hora, tsumo: boolean, target?: number) {
-        const player = this.players[this.whoseTurn]
+    private calculatePoints(winnner: number, horaResult: Hora, tsumo: boolean, target?: number) {
+        const player = this.players[winnner]
         if (tsumo) {
             if (player.seat == Wind.East) {
                 player.point += horaResult.parentPoint.tsumo * 3
                 for (let i = 0; i < this.players.length; i++) {
-                    if (i != this.whoseTurn) {
+                    if (i != winnner) {
                         this.players[i].point -= horaResult.parentPoint.tsumo
                     }
                 }
             } else {
                 player.point += horaResult.childPoint.tsumoParent + horaResult.childPoint.tsumoChild * 2
                 for (let i = 0; i < this.players.length; i++) {
-                    if (i != this.whoseTurn) {
+                    if (i != winnner) {
                         if (this.players[i].seat == Wind.East) {
                             this.players[i].point -= horaResult.childPoint.tsumoParent
                         } else {
@@ -181,7 +189,7 @@ export class MajGame4p {
         player.point += this.pointPool
         this.pointPool = 0
     }
-    private roundResult(winner: number, tsumo: boolean, target?: number) {
+    private roundResult(winner: number, tsumo: boolean, target?: number, ronAgari?: Tile) {
         const tiles = this.players[winner].hand
         const furos = this.players[winner].furos
         const player = this.players[winner]
@@ -196,20 +204,42 @@ export class MajGame4p {
             extraYaku.push('Haitei')
         }
         let doraCount = 0
+        const dora = this.dora.map((tile) => {
+            if (tile.num == 9) {
+                return tile.advance(-8)
+            }
+            return tile.advance(1)
+        })
+        let concealedDora = []
         for (let i = 0; i < this.visibleDoraCount; i++) {
-            if (tiles.includes(this.dora[i])) {
+            concealedDora.push(this.cardBank[5 + 1 + 2 * i])
+        }
+        concealedDora = concealedDora.map((tile) => {
+            if (tile.num == 9) {
+                return tile.advance(-8)
+            }
+            return tile.advance(1)
+        }
+        )
+        for (let i = 0; i < this.visibleDoraCount; i++) {
+            const doratile = dora[i]
+            if (tiles.includes(doratile)) {
                 doraCount++
             }
-            if (player.riichi) {
-                if (player.hand.includes(this.cardBank[5 + 1 + 2 * i])) {
+        }
+        if (player.riichi) {
+            for (let i = 0; i < this.visibleDoraCount; i++) {
+                const doratile = concealedDora[i]
+                if (tiles.includes(doratile)) {
                     doraCount++
                 }
             }
         }
         const horaResult = buildHora({
             tiles: player.hand,
-            agari: player.hand[13],
-            tsumo: true, furo: player.furos,
+            agari: tsumo ? player.hand[13] : ronAgari,
+            tsumo: tsumo,
+            furo: player.furos,
             selfWind: player.seat.ToPrimitive(),
             roundWind: this.gameProcess.wind.ToPrimitive(),
             extraYaku: extraYaku,
@@ -222,8 +252,15 @@ export class MajGame4p {
         } else {
             res += '荣：\n'
         }
-        for (const tile of tiles) {
+        for (let i = 0; i < tiles.length; i++) {
+            const tile = tiles[i]
+            if (i == 13 - this.players[0].furos.length * 3) {
+                res += ' '
+            }
             res += tileToUnicode(tile)
+        }
+        if (!tsumo) {
+            res += ' ' + tileToUnicode(ronAgari)
         }
         res += '|'
         for (const furoItem of furos) {
@@ -236,7 +273,7 @@ export class MajGame4p {
         for (let i = 0; i < this.visibleDoraCount; i++) {
             res += tileToUnicode(this.dora[i])
         }
-        if (this.players[this.whoseTurn].riichi) {
+        if (this.players[winner].riichi) {
             res += '\n里宝：'
             for (let i = 0; i < this.visibleDoraCount; i++) {
                 res += tileToUnicode(this.cardBank[5 + 1 + 2 * i])
@@ -245,16 +282,19 @@ export class MajGame4p {
         res += '\n'
         res += `${horaResult.han}翻${horaResult.hu}符，${horaResult.yaku.map((yaku => yakuName[yaku])).join('、')}\n`
         const playerPointsOld = this.players.map(player => player.point)
-        this.calculatePoints(horaResult, tsumo, target)
+        this.calculatePoints(winner, horaResult, tsumo, target)
         for (let i = 0; i < this.players.length; i++) {
             res += `${this.players[i].name.padEnd(6)}:${String(playerPointsOld[i]).padStart(5)}|`
         }
+        res += '\n'
         for (let i = 0; i < this.players.length; i++) {
             res += `${String(this.players[i].point - playerPointsOld[i]).padEnd(18)}`
         }
+        res += '\n'
         for (let i = 0; i < this.players.length; i++) {
             res += `${this.players[i].name.padEnd(6)}:${String(this.players[i].point).padStart(5)}|`
         }
+        res += '\n'
         return res
     }
     public async startGame() {
@@ -379,7 +419,7 @@ export class MajGame4p {
                     }
                 } else {
                     //ai行动
-                    action = 0
+                    action = Math.floor(Math.random() * player.hand.length - 1);
                 }
                 //出牌确认阶段结束
 
@@ -399,12 +439,15 @@ export class MajGame4p {
                     }
                 }
 
+                player.riichiIppatsu = false
+
                 //立直
                 if (!actionChose && playerActionCandidate.riichi.length > 0) {
                     if (playerActionCandidate.riichi.includes(action)) {
                         action = action % 13
                         actionChose = true
                         player.riichi = true
+                        player.riichiIppatsu = true
                         player.point -= 1000
                         this.pointPool += 1000
                         player.river.push(player.hand.splice(action, 1)[0])
@@ -444,10 +487,20 @@ export class MajGame4p {
                     actionChose = true
                     player.river.push(player.hand.splice(action, 1)[0])
                 }
+
+                let tilePlayed: Tile
+                if (!actionIsKan) {
+                    tilePlayed = player.river.slice(-1)[0]
+                } else {
+                    tilePlayed = player.furos.slice(-1)[0][0]
+                }
                 //出牌执行阶段结束
 
                 //出牌后确认阶段
+                let endGame: Array<number> = []
                 for (let i = 0; i < this.players.length; i++) {
+                    let message = this.renderGameDeck()
+                    message += '\n'
                     if (i == this.whoseTurn) {
                         continue
                     }
@@ -463,6 +516,32 @@ export class MajGame4p {
                         // 抢杠判定
                     } else {
                         // 荣判定
+                        if (shanten(player.hand.concat(tilePlayed), { furo: player.furos, bestShantenOnly: true }).shantenInfo.shantenNum == -1) {
+                            let extraYaku = []
+                            if (player.riichi) {
+                                extraYaku.push('Richi')
+                            }
+                            if (player.riichiIppatsu) {
+                                extraYaku.push('Ippatsu')
+                            }
+                            if (this.cardBank.length == 0) {
+                                extraYaku.push('Houtei')
+                            }
+                            let horaResult = buildHora({
+                                tiles: player.hand,
+                                agari: tilePlayed,
+                                tsumo: true, furo: player.furos,
+                                selfWind: player.seat.ToPrimitive(),
+                                roundWind: this.gameProcess.wind.ToPrimitive(),
+                                extraYaku: extraYaku
+                            })
+                            if (horaResult.han >= 1) {
+                                message += '/荣(-1)'
+                                playerActionCandidate.ron = true
+                            } else {
+                                message += '/荣无役'
+                            }
+                        }
 
                         // 杠判定
 
@@ -472,23 +551,73 @@ export class MajGame4p {
                     }
                     let action = 0
                     if (i == 0) {
-                        //
+                        if (playerActionCandidate.ron || 0) {
+                            //获取输入
+                            this.sendMessage(message)
+                            let res = ''
+                            try {
+                                res = await this.waitResponse()
+                            }
+                            catch (e) {
+                                if (e.message == 'Timeout') {
+                                    this.sendMessage('Timeout')
+                                }
+                                console.error(e)
+                                return
+                            }
+                            if (res == "endGame") {
+                                return
+                            }
+                            if (res == "r") {
+                                break
+                            }
+                            if (Tile.byText(res) !== undefined) {
+                                action = player.hand.findIndex(tile => tile.code == Tile.byText(res).code) // -1 when not found
+                            } else {
+                                action = -1
+                            }
+                            if (action === -1) {
+                                action = parseInt(res)
+                                if (Number.isNaN(action)) {
+                                    this.sendMessage('Invalid input')
+                                    action = player.hand.length - 1
+                                }
+                            }
+                        }
                     } else {
                         //ai行动
                         action = 0
                     }
-                }
-                //出牌后确认阶段结束
+                    //出牌后确认阶段结束
 
-                //出牌后执行阶段
-                if (player.riichi && !player.riichiIppatsu) {
-                    player.riichiIppatsu = true
-                } else {
-                    if (player.riichiIppatsu) {
-                        player.riichiIppatsu = false
+                    //出牌后执行阶段
+                    let reactActionChose = false
+                    if (!reactActionChose && playerActionCandidate.ron) {
+                        if (action == -1) {
+                            reactActionChose = true
+                            const mes = this.roundResult(i, false, this.whoseTurn, tilePlayed)
+                            this.sendMessage(mes)
+                            endGame.push(i)
+                            break
+                        }
                     }
+
+                    //出牌后执行阶段结束
                 }
-                //出牌后执行阶段结束
+                if (endGame.length > 0) {
+                    let f = false //连庄
+                    for (let i = 0; i < this.players.length; i++) {
+                        if (endGame.includes(i) && this.players[i].seat == Wind.East) {
+                            f = true
+                            this.gameProcess.action++
+                            break
+                        }
+                    }
+                    if (!f) {
+                        this.moveWind()
+                    }
+                    this.startGameRound()
+                }
 
                 player.hand.sort((a, b) => a.compareTo(b))
                 if (!actionIsKan) {
