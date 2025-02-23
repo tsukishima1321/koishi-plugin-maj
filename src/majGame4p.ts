@@ -69,9 +69,9 @@ export class MajGame4p {
         this.players = []
         this.players.push(player)
         this.playerSeat = playerSeat
-        this.players.push(new Player('Alice', playerSeat.next()))
-        this.players.push(new Player('Bob', playerSeat.next().next()))
-        this.players.push(new Player('Jack', playerSeat.next().next().next()))
+        this.players.push(new Player('P2', playerSeat.next()))
+        this.players.push(new Player('P3', playerSeat.next().next()))
+        this.players.push(new Player('P4', playerSeat.next().next().next()))
         this.pointPool = 0
         this.whoseTurn = 0
         this.visibleDoraCount = 1
@@ -411,81 +411,82 @@ export class MajGame4p {
                 if (player.riichi && !playerActionCandidate.tsumo && playerActionCandidate.concealedK.length == 0) {
                     // 自动出牌
                     action = player.hand.length - 1
-                }
-                if (this.whoseTurn == 0) {
-                    // 获取输入
-                    this.sendMessage(message)
-                    let res = ''
-                    try {
-                        res = await this.waitResponse()
-                    } catch (e) {
-                        if (e.message == 'Timeout') {
-                            this.sendMessage('Timeout')
-                        }
-                        console.error(e)
-                        return
-                    }
-                    if (res == "endGame") {
-                        return
-                    }
-                    if (res == "r") {
-                        break
-                    }
-                    if (Tile.byText(res) !== undefined) {
-                        action = player.hand.findIndex(tile => tile.code == Tile.byText(res).code) // -1 when not found
-                    } else {
-                        action = -1
-                    }
-                    if (action === -1) {
-                        action = parseInt(res)
-                        if (Number.isNaN(action)) {
-                            this.sendMessage('Invalid input')
-                            action = player.hand.length - 1
-                        }
-                    }
                 } else {
-                    //ai行动
-                    const shantenResult = shanten(player.hand, { furo: player.furos, bestShantenOnly: true })
-                    const shantenInfo = shantenResult.shantenInfo as ShantenWithGot
-                    let darkTiles = this.cardBank.concat()
-                    for (const p of this.players) {
-                        if (p != player) {
-                            darkTiles = darkTiles.concat(p.hand)
-                        }
-                    }
-                    if (shantenResult.shantenInfo.shantenNum >= 2) {
-                        let valueTiles = this.aiValueTiles(player, darkTiles)
-                        let minAction = 0
-                        let minValue = 99999
-                        for (let i = 0; i < valueTiles.length; i++) {
-                            if (valueTiles[i] < minValue) {
-                                minValue = valueTiles[i]
-                                minAction = i
+                    if (this.whoseTurn == 0) {
+                        // 获取输入
+                        this.sendMessage(message)
+                        let res = ''
+                        try {
+                            res = await this.waitResponse()
+                        } catch (e) {
+                            if (e.message == 'Timeout') {
+                                this.sendMessage('Timeout')
                             }
+                            console.error(e)
+                            return
                         }
-                        action = minAction;
-                    } else {
-
-                        if (playerActionCandidate.tsumo) {
-                            action = -1
+                        if (res == "endGame") {
+                            return
+                        }
+                        if (res == "r") {
+                            break
+                        }
+                        if (Tile.byText(res) !== undefined) {
+                            action = player.hand.findIndex(tile => tile.code == Tile.byText(res).code) // -1 when not found
                         } else {
-                            let maxDarkAdvanceNum = 0
-                            let maxDarkAdvanceTile: Tile
-                            for (const [tile, res] of shantenInfo.discardToAdvance) {
-                                let darkAdvanceNum = 0
-                                for (let ad of res.advance) {
-                                    darkAdvanceNum += darkTiles.filter(tile => tile.code == ad.code).length
-                                }
-                                if (darkAdvanceNum > maxDarkAdvanceNum) {
-                                    maxDarkAdvanceNum = darkAdvanceNum
-                                    maxDarkAdvanceTile = tile
+                            action = -1
+                        }
+                        if (action === -1) {
+                            action = parseInt(res)
+                            if (Number.isNaN(action)) {
+                                this.sendMessage('Invalid input')
+                                action = player.hand.length - 1
+                            }
+                        }
+                    } else {
+                        //ai行动
+                        const shantenResult = shanten(player.hand, { furo: player.furos, bestShantenOnly: true })
+                        const shantenInfo = shantenResult.shantenInfo as ShantenWithGot
+                        let darkTiles = this.cardBank.concat()
+                        for (const p of this.players) {
+                            if (p != player) {
+                                darkTiles = darkTiles.concat(p.hand)
+                            }
+                        }
+                        if (shantenResult.shantenInfo.shantenNum >= 2) {
+                            let valueTiles = this.aiValueTiles(player, darkTiles)
+                            let minAction = 0
+                            let minValue = 99999
+                            for (let i = 0; i < valueTiles.length; i++) {
+                                if (valueTiles[i] < minValue) {
+                                    minValue = valueTiles[i]
+                                    minAction = i
                                 }
                             }
-                            action = player.hand.findIndex(tile => tile.code == maxDarkAdvanceTile.code)
-                            if (playerActionCandidate.riichi.length > 0) {
-                                action = action + 26
-                                if (!playerActionCandidate.riichi.includes(action)) {
-                                    throw new Error('AI error')
+                            action = minAction;
+                        } else {
+
+                            if (playerActionCandidate.tsumo) {
+                                action = -1
+                            } else {
+                                let maxDarkAdvanceNum = 0
+                                let maxDarkAdvanceTile: Tile
+                                for (const [tile, res] of shantenInfo.discardToAdvance) {
+                                    let darkAdvanceNum = 0
+                                    for (let ad of res.advance) {
+                                        darkAdvanceNum += darkTiles.filter(tile => tile.code == ad.code).length
+                                    }
+                                    if (darkAdvanceNum > maxDarkAdvanceNum) {
+                                        maxDarkAdvanceNum = darkAdvanceNum
+                                        maxDarkAdvanceTile = tile
+                                    }
+                                }
+                                action = player.hand.findIndex(tile => tile.code == maxDarkAdvanceTile.code)
+                                if (playerActionCandidate.riichi.length > 0) {
+                                    action = action + 26
+                                    if (!playerActionCandidate.riichi.includes(action)) {
+                                        throw new Error('AI error')
+                                    }
                                 }
                             }
                         }
@@ -501,7 +502,9 @@ export class MajGame4p {
                 if (!actionChose && playerActionCandidate.tsumo) {
                     if (action == -1) {
                         actionChose = true
-                        const mes = this.roundResult(this.whoseTurn, true)
+                        let mes = this.renderGameDeck()
+                        this.sendMessage(mes)
+                        mes = this.roundResult(this.whoseTurn, true)
                         this.sendMessage(mes)
                         break
                     }
@@ -667,7 +670,9 @@ export class MajGame4p {
                     if (!reactActionChose && playerActionCandidate.ron) {
                         if (action == -1) {
                             reactActionChose = true
-                            const mes = this.roundResult(i, false, this.whoseTurn, tilePlayed)
+                            let mes = this.renderGameDeck()
+                            this.sendMessage(mes)
+                            mes = this.roundResult(i, false, this.whoseTurn, tilePlayed)
                             this.sendMessage(mes)
                             endGame.push(i)
                             break
