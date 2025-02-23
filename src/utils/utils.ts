@@ -1,5 +1,17 @@
 import { Wind as _Wind, Tile, TileType } from 'mahjong-utils'
 
+export const padString = (str: string, length: number, pad = ' '): string => {
+    let result = str
+    //居中字符串
+    if (str.length < length) {
+        let padLength = length - str.length
+        let leftPad = Math.floor(padLength / 2)
+        let rightPad = Math.ceil(padLength / 2)
+        result = pad.repeat(leftPad) + str + pad.repeat(rightPad)
+    }
+    return result
+}
+
 export const shuffle = (arr: Array<any>): Array<any> => {
     let length = arr.length;
     for (let i = length - 1; i > 0; i--) {
@@ -14,7 +26,17 @@ export const tileToUnicode = (tile: Tile): string => {
         case TileType.M: return String.fromCodePoint(0x1f007 + tile.num - 1)
         case TileType.S: return String.fromCodePoint(0x1f010 + tile.num - 1)
         case TileType.P: return String.fromCodePoint(0x1f019 + tile.num - 1)
-        case TileType.Z: return String.fromCodePoint(0x1f000 + tile.num - 1)
+        case TileType.Z: {
+            if (tile.num <= 4) {
+                return String.fromCodePoint(0x1f000 + tile.num - 1)
+            } else {
+                switch (tile.num) {
+                    case 5: return String.fromCodePoint(0x1f006)
+                    case 6: return String.fromCodePoint(0x1f005)
+                    case 7: return String.fromCodePoint(0x1f004)
+                }
+            }
+        }
     }
 }
 

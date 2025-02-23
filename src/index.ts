@@ -50,7 +50,7 @@ export function apply(ctx: Context) {
     const waitResponse = () => {
       return waitUserReply(ctx, session.guildId, session.userId)
     }
-    const game = new MajGame4p('aaa', Wind.East, 0, sendMessage, waitResponse)
+    const game = new MajGame4p('月岛', Wind.East, 0, sendMessage, waitResponse)
     activeGames[session.userId] = game
     await game.startGame()
     activeGames[session.userId] = undefined
