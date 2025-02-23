@@ -112,6 +112,12 @@ export class MajGame4p {
             }
             player.hand.sort((a, b) => a.compareTo(b))
         }
+        for (let i = 0; i < 4; i++) {
+            if (this.players[i].seat == Wind.East) {
+                this.whoseTurn = i
+                break
+            }
+        }
     }
     private moveWind() {
         this.gameProcess.action = 0
