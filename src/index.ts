@@ -1,7 +1,7 @@
 import { Context, Schema, Session } from 'koishi'
 import { Wind } from './utils/utils'
 import { MajGame4p } from './majGame4p'
-import { buildHora,Hora,Tile } from 'mahjong-utils'
+import { buildHora,Hora,Tile,shanten, Furo } from 'mahjong-utils'
 
 export const name = 'mahjong'
 
