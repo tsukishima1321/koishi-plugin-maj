@@ -1,7 +1,7 @@
 import { Context, Schema, Session } from 'koishi'
 import { Wind } from './utils/utils'
 import { MajGame4p } from './majGame4p'
-import { buildHora,Hora,Tile,shanten, Furo } from 'mahjong-utils'
+import { buildHora, Hora, Tile, shanten, Furo } from 'mahjong-utils'
 
 export const name = 'mahjong'
 
@@ -10,15 +10,19 @@ export const inject = {
   optional: [],
 }
 
-export interface Config { }
+export interface Config {
+  inGameMessagePrefix: string
+}
 
-export const Config = Schema.object({})
+export const Config = Schema.object({
+  inGameMessagePrefix: Schema.string().default('maj')
+})
 
-const waitUserReply = async (ctx: Context, guildID: string, userID: string): Promise<string> => {
+const waitUserReply = async (ctx: Context, prefix: string, guildID: string, userID: string): Promise<string> => {
   let finished = false
   let result = ''
   let listener = (session: Session) => {
-    if (session.content.startsWith('maj ') && session.userId == userID && session.guildId == guildID) {
+    if (session.content.startsWith(prefix + ' ') && session.userId == userID && session.guildId == guildID) {
       finished = true
       result = session.content.slice(4)
     }
@@ -28,8 +32,9 @@ const waitUserReply = async (ctx: Context, guildID: string, userID: string): Pro
   while (!finished) {
     await new Promise(resolve => setTimeout(resolve, 500))
     count++
-    if (count > 120) {
+    if (count > 1200) {
       finished = true
+      dispose()
       throw new Error('Timeout')
     }
   }
@@ -37,7 +42,7 @@ const waitUserReply = async (ctx: Context, guildID: string, userID: string): Pro
   return result
 }
 
-export function apply(ctx: Context) {
+export function apply(ctx: Context, cfg: Config) {
   let activeGames: { [key: string]: MajGame4p } = {}
   ctx.command('startGame').action(async ({ session }) => {
     if (activeGames[session.userId]) {
@@ -48,12 +53,12 @@ export function apply(ctx: Context) {
       session.send(mes);
     }
     const waitResponse = () => {
-      return waitUserReply(ctx, session.guildId, session.userId)
+      return waitUserReply(ctx, cfg.inGameMessagePrefix, session.guildId, session.userId)
     }
     const game = new MajGame4p('You', Wind.East, 0, sendMessage, waitResponse)
     activeGames[session.userId] = game
     await game.startGame()
     activeGames[session.userId] = undefined
-    return "Game finished"
+    return "游戏结束"
   })
 }

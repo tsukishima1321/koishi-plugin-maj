@@ -1,4 +1,4 @@
-import { Wind as _Wind, Tile, TileType } from 'mahjong-utils'
+import { Wind as _Wind, Tile, TilesArg, TileType, shanten } from 'mahjong-utils'
 
 export const padString = (str: string, length: number, pad = ' '): string => {
     let result = str
@@ -37,6 +37,26 @@ export const tileToUnicode = (tile: Tile): string => {
                 }
             }
         }
+    }
+}
+
+export const isTenWithGot = (hand: TilesArg): boolean => {
+    for (let i = 0; i < hand.length; i++) {
+        let handWithout = hand.slice() as Tile[]
+        handWithout.splice(i, 1)
+        if (isTenWithoutGot(handWithout)) {
+            return true
+        }
+    }
+    return false
+}
+
+export const isTenWithoutGot = (tiles: TilesArg): boolean => {
+    let shantenResult = shanten(tiles, { bestShantenOnly: true })
+    if (shantenResult.shantenInfo.shantenNum == 0) {
+        return true
+    } else {
+        return false
     }
 }
 
