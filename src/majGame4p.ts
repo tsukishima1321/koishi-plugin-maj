@@ -249,15 +249,11 @@ export class MajGame4p {
                 }
             }
         }
-        let hand = player.hand
-        for (const furo of player.furos) {
-            hand = hand.concat(furo.tiles)
-        }
         const horaResult = buildHora({
-            tiles: hand,
+            tiles: player.hand,
             agari: tsumo ? player.hand[13] : ronAgari,
             tsumo: tsumo,
-            // furo: player.furos,
+            furo: player.furos,
             selfWind: player.seat.ToPrimitive(),
             roundWind: this.gameProcess.wind.ToPrimitive(),
             extraYaku: extraYaku,
@@ -272,7 +268,7 @@ export class MajGame4p {
         }
         for (let i = 0; i < tiles.length; i++) {
             const tile = tiles[i]
-            if (i == 13 - this.players[0].furos.length * 3) {
+            if (i == 13 - this.players[winner].furos.length * 3) {
                 res += ' '
             }
             res += tileToUnicode(tile)
@@ -374,17 +370,11 @@ export class MajGame4p {
                     if (this.cardBank.length == 0) {
                         extraYaku.push('Haitei')
                     }
-                    let hand = player.hand
-                    for (const furo of player.furos) {
-                        hand = hand.concat(furo.tiles)
-                    }
                     let horaResult = buildHora({
-                        // tiles: player.hand,
-                        tiles: hand,
+                        tiles: player.hand,
                         agari: player.hand[13],
                         tsumo: true,
-                        // furo: player.furos,
-                        furo: [],
+                        furo: player.furos,
                         selfWind: player.seat.ToPrimitive(),
                         roundWind: this.gameProcess.wind.ToPrimitive(),
                         extraYaku: extraYaku
@@ -609,15 +599,7 @@ export class MajGame4p {
                         // 抢杠判定
                     } else {
                         // 荣判定
-                        // if (shanten(player.hand.concat(tilePlayed), { furo: player.furos, bestShantenOnly: true }).shantenInfo.shantenNum == -1) { 带副露的判定有bug无法使用
-
-                        // 替换：
-                        let hand = player.hand.concat(tilePlayed)
-                        for (const furo of player.furos) {
-                            hand = hand.concat(furo.tiles)
-                        }
-                        if (shanten(player.hand, { bestShantenOnly: true }).shantenInfo.shantenNum == -1) {
-                            //
+                        if (shanten(player.hand.concat(tilePlayed), { furo: player.furos, bestShantenOnly: true }).shantenInfo.shantenNum == -1) {
                             let extraYaku = []
                             if (player.riichi) {
                                 extraYaku.push('Richi')
@@ -629,12 +611,10 @@ export class MajGame4p {
                                 extraYaku.push('Houtei')
                             }
                             let horaResult = buildHora({
-                                // tiles: player.hand,
-                                tiles: hand,
+                                tiles: player.hand,
                                 agari: tilePlayed,
                                 tsumo: true,
-                                // furo: player.furos,
-                                furo: [],
+                                furo: player.furos,
                                 selfWind: player.seat.ToPrimitive(),
                                 roundWind: this.gameProcess.wind.ToPrimitive(),
                                 extraYaku: extraYaku
