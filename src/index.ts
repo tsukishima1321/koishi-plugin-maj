@@ -1,7 +1,7 @@
 import { Context, Schema, Session } from 'koishi'
 import { Wind } from './utils/utils'
 import { MajGame4p } from './majGame4p'
-import { buildHora, Hora, Tile, shanten, Furo } from 'mahjong-utils'
+import { buildHora, Hora, Tile, shanten, Furo, FuroType } from 'mahjong-utils'
 
 export const name = 'mahjong'
 
@@ -43,6 +43,11 @@ const waitUserReply = async (ctx: Context, prefix: string, guildID: string, user
 }
 
 export function apply(ctx: Context, cfg: Config) {
+  console.log(shanten(
+    '225p123678s66z', {
+    furo: [new Furo(FuroType.Ankan, Tile.byText('3p'))]
+  }
+  ))
   let activeGames: { [key: string]: MajGame4p } = {}
   ctx.command('startGame').action(async ({ session }) => {
     if (activeGames[session.userId]) {

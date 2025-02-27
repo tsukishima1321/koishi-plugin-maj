@@ -301,7 +301,7 @@ export class MajGame4p {
             }
         }
         res += '\n'
-        res += `${horaResult.han}翻${horaResult.hu}符，${horaResult.yaku.map((yaku => yakuName[yaku])).join('、')}\n`
+        res += `${horaResult.han}番${horaResult.hu}符，${horaResult.yaku.map((yaku => yakuName[yaku])).join('、')}\n`
         const playerPointsOld = this.players.map(player => player.point)
         this.calculatePoints(winner, horaResult, tsumo, target)
         for (let i = 0; i < 4; i++) {
@@ -309,7 +309,7 @@ export class MajGame4p {
         }
         res += '\n'
         for (let i = 0; i < 4; i++) {
-            res += `${padString(String(this.players[i].point - playerPointsOld[i]), 17)}`
+            res += `${padString(String(this.players[i].point - playerPointsOld[i]), 16)}`
         }
         res += '\n'
         for (let i = 0; i < 4; i++) {
@@ -397,11 +397,13 @@ export class MajGame4p {
     }
     public async startGame() {
         while (true) {
+            // 每次循环为一局游戏
             this.startGameRound()
             const roundResult = await (async () => {
                 let roundResult: RoundResult = { renchann: false, ryuu: false, error: false }
                 let skipDraw = false
                 while (this.cardBank.length - 13 > 0) {
+                    // 每次循环为一次出牌
                     let player = this.players[this.whoseTurn]
                     //抽牌阶段
                     if (!skipDraw) {
@@ -418,7 +420,7 @@ export class MajGame4p {
                         extendedK: [],
                         riichi: [],
                     }
-                    let action = 0
+
                     const shantenResult = shanten(player.hand, { furo: [], bestShantenOnly: true })
                     let message = this.renderGameDeck()
                     message += '\n出牌：'
@@ -457,8 +459,7 @@ export class MajGame4p {
                         for (let i = 0; i < player.hand.length; i++) {
                             let hand = player.hand.slice()
                             hand.splice(i, 1)
-                            isTenWithoutGot(hand)
-                            if (shantenResult.shantenInfo.shantenNum == 0) {
+                            if (isTenWithoutGot(hand)) {
                                 message += `/立直${tileToUnicode(player.hand[i])}(${i + 26})`
                                 playerActionCandidate.riichi.push(i + 26)
                             }
@@ -486,6 +487,7 @@ export class MajGame4p {
                             }
                         }
                     }
+                    let action = 0
                     if (player.riichi && !playerActionCandidate.tsumo && playerActionCandidate.concealedK.length == 0) {
                         // 自动出牌
                         action = player.hand.length - 1
@@ -511,10 +513,15 @@ export class MajGame4p {
                             if (res == "r") {
                                 break
                             }
-                            if (Tile.byText(res) !== undefined) {
-                                action = player.hand.findIndex(tile => tile.code == Tile.byText(res).code) // -1 when not found
+                            if (res == '') {
+                                action = player.hand.length - 1
+                                console.log(action)
                             } else {
-                                action = -1
+                                if (Tile.byText(res) !== undefined) {
+                                    action = player.hand.findIndex(tile => tile.code == Tile.byText(res).code) // -1 when not found
+                                } else {
+                                    action = -1
+                                }
                             }
                             if (action === -1) {
                                 action = parseInt(res)
@@ -753,12 +760,9 @@ export class MajGame4p {
                                     roundResult.error = true
                                     return roundResult
                                 }
-                                if (Tile.byText(res) !== undefined) {
-                                    action = player.hand.findIndex(tile => tile.code == Tile.byText(res).code) // -1 when not found
+                                if (res == '') {
+                                    action = 0
                                 } else {
-                                    action = -1
-                                }
-                                if (action === -1) {
                                     action = parseInt(res)
                                     if (Number.isNaN(action)) {
                                         this.sendMessage('Invalid input')
@@ -781,7 +785,7 @@ export class MajGame4p {
                     let endGame: Array<number> = [];
                     (() => {
                         //荣执行
-                        for (let i = this.whoseTurn + 1; i < this.whoseTurn + 3; i++) {
+                        for (let i = this.whoseTurn + 1; i <= this.whoseTurn + 3; i++) {
                             const playerActionCandidate = playersActionCandidate[i % 4]
                             if (playerActionCandidate.ron) {
                                 if (playersAction[i % 4] == -1) {
@@ -805,7 +809,7 @@ export class MajGame4p {
                         }
 
                         //杠、碰执行
-                        for (let i = this.whoseTurn + 1; i < this.whoseTurn + 3; i++) {
+                        for (let i = this.whoseTurn + 1; i <= this.whoseTurn + 3; i++) {
                             const playerActionCandidate = playersActionCandidate[i % 4]
                             if (playerActionCandidate.kan) {
                                 if (playersAction[i % 4] == 2) {
@@ -835,7 +839,7 @@ export class MajGame4p {
                         }
 
                         //碰执行
-                        for (let i = this.whoseTurn + 1; i < this.whoseTurn + 3; i++) {
+                        for (let i = this.whoseTurn + 1; i <= this.whoseTurn + 3; i++) {
                             const playerActionCandidate = playersActionCandidate[i % 4]
                             if (playerActionCandidate.pon) {
                                 if (playersAction[i % 4] == 1) {
@@ -907,7 +911,9 @@ export class MajGame4p {
                     if (!actionIsKan) {
                         this.whoseTurn = (this.whoseTurn + 1) % 4
                     }
+                    // 一次出牌结束
                 }
+                // 一局游戏结束
                 roundResult.ryuu = true
                 return roundResult
             })()
